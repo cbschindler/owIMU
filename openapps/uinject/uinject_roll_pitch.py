@@ -34,11 +34,17 @@ while True:
     	pitch = atan(-Xaccel/sqrt(Yaccel**2 + Zaccel**2))*180.0/3.14
     except:
     	pitch = 999
-    myAddr  = struct.unpack('<H',request[-15:-13])
-    temperature    = struct.unpack('<h',request[-17:-15])
+    myAddr  = format(struct.unpack('<H',request[-15:-13])[0], 'x')
+    temperature    = struct.unpack('<h',request[-17:-15])[0]
+    myASN = struct.unpack('<HHB',request[-22:-17])
     print Xaccel
     print Yaccel
     print Zaccel
+    print roll
+    print pitch
+    print myAddr
+    print temperature
+    print myASN
     print "\n"
     #print 'received "{0}" from [{1}]:{2}'.format(counter,hisAddress,hisPort)
 
