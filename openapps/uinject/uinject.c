@@ -41,7 +41,7 @@
 
 uinject_vars_t uinject_vars;
 
-static const uint8_t uinject_payload[]    = "uinject";
+static const uint8_t uinject_payload[]    = "abcabca"; //was "uinject", i changed it so it doesnt crash parserdata.py;
 static const uint8_t uinject_dst_addr[]   = {
    0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01

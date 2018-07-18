@@ -93,7 +93,7 @@ enum {
    WKP_UDP_ECHO                        =       7,
    WKP_UDP_EXPIRATION                  =       5,
    WKP_UDP_MONITOR                     =       3,
-   WKP_UDP_INJECT                      =   61617,// 0xf0b1
+   WKP_UDP_INJECT                      =   2018, //originally 61617 I changed it to 2018 to work with uinject_roll_pitcy.py              ,// 0xf0b1
    WKP_UDP_RINGMASTER                  =   15000,
    WKP_UDP_SERIALBRIDGE                =    2001,
 };

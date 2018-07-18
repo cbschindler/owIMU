@@ -164,4 +164,11 @@ Time[s],383.41,Xacceleration[gs],1.06625,Yacceleration[gs],0.0505,Zacceleration[
 Time[s],384.42,Xacceleration[gs],1.06775,Yacceleration[gs],0.04825,Zacceleration[gs],-0.05475,Temperature[C],27,Address,db37
 Time[s],385.48,Xacceleration[gs],1.06675,Yacceleration[gs],0.0495,Zacceleration[gs],-0.05025,Temperature[C],27,Address,db37
 Time[s],386.43,Xacceleration[gs],1.06675,Yacceleration[gs],0.03325,Zacceleration[gs],-0.054,Temperature[C],27,Address,db37
-Time[s],387.55,Xacceleration[gs],1.067,Yacceleration[gs],0.0635,Zacceleration[gs
+Time[s],387.55,Xacceleration[gs],1.067,Yacceleration[gs],0.0635,Zacceleration[gs],-0.05475,Temperature[C],27,Address,db37
+Time[s],388.47,Xacceleration[gs],1.0675,Yacceleration[gs],0.049,Zacceleration[gs],-0.0515,Temperature[C],27,Address,db37
+Time[s],389.45,Xacceleration[gs],1.06575,Yacceleration[gs],0.06375,Zacceleration[gs],-0.052,Temperature[C],27,Address,db37
+Time[s],390.54,Xacceleration[gs],1.07275,Yacceleration[gs],0.04875,Zacceleration[gs],-0.048,Temperature[C],27,Address,db37
+Time[s],391.46,Xacceleration[gs],1.06025,Yacceleration[gs],0.0505,Zacceleration[gs],-0.05625,Temperature[C],27,Address,db37
+Time[s],392.47,Xacceleration[gs],1.067,Yacceleration[gs],0.0525,Zacceleration[gs],-0.054,Temperature[C],27,Address,db37
+Time[s],393.53,Xacceleration[gs],1.06825,Yacceleration[gs],0.0475,Zacceleration[gs],-0.0535,Temperature[C],27,Address,db37
+Time[s],394.48,Xacceleration[gs],1.06875,Yacceleration[gs],0.053,Zacceleration[gs],-0.0485,Temperature[C],27,Address,db37
