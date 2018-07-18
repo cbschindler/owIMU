@@ -9,6 +9,7 @@
 #include "board.h"
 #include "debugpins.h"
 #include "leds.h"
+#include "/home/vagrant/openwsn-May19/openwsn-fw/openstack/02b-MAChigh/schedule.h"
 
 //=========================== variables =======================================
 
@@ -58,7 +59,16 @@ void scheduler_start() {
          scheduler_dbg.numTasksCur--;
       }
       debugpins_task_clr();
+      
+      /*
+      if (isSlotSerialRx() == 1) {
+         board_deep_sleep();
+      } else {
+          board_sleep();
+      }
+      */
       board_sleep();
+      
       debugpins_task_set();                      // IAR should halt here if nothing to do
    }
 }

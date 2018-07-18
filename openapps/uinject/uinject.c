@@ -6,6 +6,36 @@
 #include "scheduler.h"
 #include "IEEE802154E.h"
 #include "idmanager.h"
+#include "accel_mimsy.h"
+#include "flash_mimsy.h"
+#include "inv_mpu.h"
+#include "inv_mpu_dmp_motion_driver.h"
+
+
+
+#include "i2c.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <headers/hw_memmap.h>
+#include <source/gpio.h>
+#include <headers/hw_ioc.h>
+#include <source/ioc.h>
+#include <source/interrupt.h>
+#include <source/adc.h>
+#include <source/sys_ctrl.h>
+#include <headers/hw_sys_ctrl.h>
+#include <source/systick.h>
+#include <headers/hw_cctest.h>
+#include <headers/hw_rfcore_xreg.h>
+// #####################################################################################
+
+
+// ########## DEFINES FOR TEMPERATURE SENSOR ##################
+#define CONST 0.58134 //(VREF / 2047) = (1190 / 2047), VREF from Datasheet
+#define OFFSET_DATASHEET_25C 827 // 1422*CONST, from Datasheet
+#define TEMP_COEFF (CONST * 4.2) // From Datasheet
+#define OFFSET_0C (OFFSET_DATASHEET_25C - (25 * TEMP_COEFF))
 
 //=========================== variables =======================================
 
@@ -22,10 +52,36 @@ static const uint8_t uinject_dst_addr[]   = {
 void uinject_timer_cb(opentimers_id_t id);
 void uinject_task_cb(void);
 
+IMUData mydata;
+short sensors=INV_XYZ_GYRO | INV_WXYZ_QUAT|INV_XYZ_ACCEL;
+int  gyro_fsr = 2000;
+short gyro[3]={0,0,0};
+short accel[3]={0,0,0};
+long quat[4]={0,0,0,0};
+unsigned long timestamp2 =0;
+unsigned char more =0;
+
 //=========================== public ==========================================
 
 void uinject_init() {
-   
+	//uint8_t mydummy1 = (uint8_t)(idmanager_getMyID(ADDR_64B)->addr_64b[6]);
+	//uint8_t mydummy2 = (uint8_t)(idmanager_getMyID(ADDR_64B)->addr_64b[7]);
+	gyro_fsr = 2000;
+	timestamp2=0;
+	sensors=INV_XYZ_GYRO | INV_WXYZ_QUAT|INV_XYZ_ACCEL;
+	mimsyIMUInit();
+    mimsyIMURead6Dof( &mydata);
+  
+
+   // mpu_set_sensors(INV_XYZ_ACCEL|INV_XYZ_GYRO); //turn on sensor
+  // mpu_set_accel_fsr(16); //set fsr for accel
+  // mpu_set_gyro_fsr(gyro_fsr); //set fsr for accel
+
+   //mimsyDmpBegin();
+    // dmp_read_fifo(gyro, accel, quat,&timestamp2, &sensors, &more);
+   // indicate
+
+
     // clear local variables
     memset(&uinject_vars,0,sizeof(uinject_vars_t));
 
@@ -86,6 +142,7 @@ void uinject_task_cb() {
       opentimers_destroy(uinject_vars.timerId);
       return;
    }
+
    
    // if you get here, send a packet
    
@@ -113,9 +170,109 @@ void uinject_task_cb() {
    packetfunctions_reserveHeaderSize(pkt,sizeof(uinject_payload)-1);
    memcpy(&pkt->payload[0],uinject_payload,sizeof(uinject_payload)-1);
    
-   packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
-   pkt->payload[1] = (uint8_t)((uinject_vars.counter & 0xff00)>>8);
-   pkt->payload[0] = (uint8_t)(uinject_vars.counter & 0x00ff);
+   
+
+
+   GPIOPinTypeGPIOInput(GPIO_D_BASE, GPIO_PIN_4);
+   GPIOPinTypeGPIOInput(GPIO_D_BASE, GPIO_PIN_5);
+   uint16_t ui16Dummy;
+   double dOutputVoltage;
+
+   //
+   // Connect temp sensor to ADC
+   //
+   HWREG(CCTEST_TR0) |= CCTEST_TR0_ADCTM;
+
+   //
+   // Enable the temperature sensor
+   //
+   HWREG(RFCORE_XREG_ATEST) = 0x01;
+
+   //
+   // Configure ADC, Internal reference, 512 decimation rate (12bit)
+   //
+   SOCADCSingleConfigure(SOCADC_12_BIT, SOCADC_REF_INTERNAL);
+
+
+
+   //
+   // Trigger single conversion on internal temp sensor
+   //
+   SOCADCSingleStart(SOCADC_TEMP_SENS);
+
+   //
+   // Wait until conversion is completed
+   //
+   while(!SOCADCEndOfCOnversionGet())
+           {
+           }
+
+   //
+   // Get data and shift down based on decimation rate
+   //
+   ui16Dummy = SOCADCDataGet() >> SOCADC_12_BIT_RSHIFT;
+
+   //
+   // Convert to temperature
+   //
+   dOutputVoltage = ui16Dummy * CONST;
+   dOutputVoltage = ((dOutputVoltage - OFFSET_0C) / TEMP_COEFF);
+
+   //
+   // Disable the temperature sensor
+   //
+   HWREG(RFCORE_XREG_ATEST) = 0x00;
+
+   //
+   // Disconnect temp sensor to ADC
+   //
+   HWREG(CCTEST_TR0) = 0x0;
+
+
+   i2c_init();
+   mimsyIMUInit();
+   int i = 0;
+   for (i=0; i<10; i++) {};
+
+
+
+
+
+
+    mimsyIMURead6Dof( &mydata);
+    //dmp_read_fifo(gyro, accel, quat,&timestamp2, &sensors, &more);
+
+    /*
+    packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+    pkt->payload[1] = (uint8_t)((accel[0] & 0xff00)>>8);
+    pkt->payload[0] = (uint8_t)(accel[0] & 0x00ff);
+    pkt->payload[1] = (uint8_t)((mydata.signedfields.accelX & 0xff00)>>8);
+    pkt->payload[0] = (uint8_t)(mydata.signedfields.accelX & 0x00ff);
+    //pkt->payload[1] = (uint8_t)((uinject_vars.counter & 0xff00)>>8);
+    //pkt->payload[0] = (uint8_t)(uinject_vars.counter & 0x00ff);
+    */
+
+      packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+      pkt->payload[1] = (uint8_t)((mydata.signedfields.accelX & 0xff00)>>8);
+      pkt->payload[0] = (uint8_t)(mydata.signedfields.accelX & 0x00ff);
+
+      packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+      pkt->payload[1] = (uint8_t)((mydata.signedfields.accelY & 0xff00)>>8);
+      pkt->payload[0] = (uint8_t)(mydata.signedfields.accelY & 0x00ff);
+
+      packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+      pkt->payload[1] = (uint8_t)((mydata.signedfields.accelZ & 0xff00)>>8);
+      pkt->payload[0] = (uint8_t)(mydata.signedfields.accelZ & 0x00ff);
+   
+      packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+      pkt->payload[1] = (uint8_t)(idmanager_getMyID(ADDR_64B)->addr_64b[6]);
+      pkt->payload[0] = (uint8_t)(idmanager_getMyID(ADDR_64B)->addr_64b[7]);
+
+      packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+      pkt->payload[1] = (uint8_t)(((int)dOutputVoltage & 0xff00)>>8);
+      pkt->payload[0] = (uint8_t)((int)dOutputVoltage & 0x00ff);
+
+
    uinject_vars.counter++;
    
    packetfunctions_reserveHeaderSize(pkt,sizeof(asn_t));

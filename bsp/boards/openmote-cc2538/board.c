@@ -76,14 +76,14 @@ void board_init(void) {
    board_timer_init();
    leds_init();
    debugpins_init();
-   button_init();
+   //button_init();
    sctimer_init();
    uart_init();
    radio_init();
    i2c_init();
-   sensors_init();
-   cryptoengine_init();
-   pwm_init();
+   //sensors_init();
+   //cryptoengine_init();
+   //pwm_init();
 }
 
 /**

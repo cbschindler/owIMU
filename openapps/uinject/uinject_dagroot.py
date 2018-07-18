@@ -2,6 +2,7 @@ import serial
 import threading
 import struct
 import binascii
+import datetime
 
 class OpenHdlc(object):
     
@@ -146,8 +147,7 @@ class moteProbe(threading.Thread):
         
         # give this thread a name
         self.name                 = 'moteProbe@'+self.serialport
-        print "counter latency(second)"
-        
+        #print "counter latency(second)"
         # start myself
         self.start()
     
@@ -159,8 +159,12 @@ class moteProbe(threading.Thread):
             while self.goOn:     # open serial port
                 
                 self.serial = serial.Serial(self.serialport,'115200')
-                
+                print "Network Forming..."
+                now = datetime.datetime.now()
+                myfilename = str(now.year)+"-"+str(now.month)+"-"+str(now.day)+"-"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)+".csv"
+                myfile = open(myfilename,"w")
                 while self.goOn: # read bytes from serial port
+                    
                     try:
                         rxByte = self.serial.read(1)
                     except Exception as err:
@@ -206,16 +210,26 @@ class moteProbe(threading.Thread):
                                             self.serial.write(outputToWrite)
                                 elif self.inputBuf[0]==ord('D'):
                                     if self.UINJECT_MASK == ''.join(chr(i) for i in self.inputBuf[-7:]):
-                                        asn_inital  = struct.unpack('<HHB',''.join([chr(c) for c in self.inputBuf[3:8]]))
-                                        asn_arrive  = struct.unpack('<HHB',''.join([chr(c) for c in self.inputBuf[-14:-9]]))
-                                        counter     = struct.unpack('<h',''.join([chr(b) for b in self.inputBuf[-9:-7]]))[0]
+                                        asn_initial  = struct.unpack('<HHB',''.join([chr(c) for c in self.inputBuf[3:8]]))
+
+                                        Xaccel  = struct.unpack('<h',''.join([chr(b) for b in self.inputBuf[-9:-7]]))[0]
+                                        Yaccel  = struct.unpack('<h',''.join([chr(b) for b in self.inputBuf[-11:-9]]))[0]
+                                        Zaccel  = struct.unpack('<h',''.join([chr(b) for b in self.inputBuf[-13:-11]]))[0]
+                                        myAddr  = struct.unpack('<H',''.join([chr(b) for b in self.inputBuf[-15:-13]]))[0]
+                                        temperature    = struct.unpack('<h',''.join([chr(b) for b in self.inputBuf[-17:-15]]))[0]
+
+                                        #asn_arrive  = struct.unpack('<HHB',''.join([chr(c) for c in self.inputBuf[-14:-9]]))
+                                        #counter     = struct.unpack('<h',''.join([chr(b) for b in self.inputBuf[-9:-7]]))[0]
 
                                         if self.last_counter!=None:
                                             if counter-self.last_counter!=1:
-                                                print 'MISSING {0} packets!!'.format(counter-self.last_counter-1)
-                                        self.last_counter = counter
-                                        print "{0:^7} {1:^15}".format(counter, self.SLOT_DURATION*((asn_inital[0]-asn_arrive[0])+(asn_inital[1]-asn_arrive[1])*256+(asn_inital[2]-asn_arrive[2])*65536))
-                                        
+                                                pass
+                                                #print 'MISSING {0} packets!!'.format(counter-self.last_counter-1)
+                                        #self.last_counter = counter
+                                        #print "{0:^7} {1:^15}".format(counter, self.SLOT_DURATION*((asn_inital[0]-asn_arrive[0])+(asn_inital[1]-asn_arrive[1])*256+(asn_inital[2]-asn_arrive[2])*65536))
+                                        #print str((asn_initial[0] + asn_initial[1]*65536)*0.01) + "," + str(Xaccel/16000.0) + "," + str(Yaccel/16000.0) + "," + str(Zaccel/16000.0) + "," + str(temperature) + "," + str('{:x}'.format(myAddr))
+                                        print "Time[s]," + str((asn_initial[0] + asn_initial[1]*65536)*0.01) + ",Xacceleration[gs]," + str(Xaccel/16000.0) + ",Yacceleration[gs]," + str(Yaccel/16000.0) + ",Zacceleration[gs]," + str(Zaccel/16000.0) + ",Temperature[C]," + str(temperature) + ",Address," + str('{:x}'.format(myAddr))
+                                        myfile.write("Time[s]," + str((asn_initial[0] + asn_initial[1]*65536)*0.01) + ",Xacceleration[gs]," + str(Xaccel/16000.0) + ",Yacceleration[gs]," + str(Yaccel/16000.0) + ",Zacceleration[gs]," + str(Zaccel/16000.0) + ",Temperature[C]," + str(temperature) + ",Address," + str('{:x}'.format(myAddr)) + '\n')
                                         with self.outputBufLock:
                                             self.outputBuf += [binascii.unhexlify(self.CMD_SEND_DATA)]
                                         
@@ -237,4 +251,4 @@ def main():
     print 'poipoi'
 
 if __name__=="__main__":
-    moteProbe('COM7')
+    moteProbe('/dev/ttyUSB7')

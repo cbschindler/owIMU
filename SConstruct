@@ -106,6 +106,7 @@ command_line_options = {
         'z1',
         # Cortex-M3
         'openmote-cc2538',
+        'mimsy2-cc2538',
 		'openmote-b',
         'silabs-ezr32wg',
         'openmotestm',

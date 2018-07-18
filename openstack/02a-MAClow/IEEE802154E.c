@@ -17,11 +17,35 @@
 #include "sctimer.h"
 #include "openrandom.h"
 
+#include <headers/hw_memmap.h>
+#include <headers/hw_types.h>
+
+#include <source/gpio.h>
+
+#include <headers/hw_ioc.h>
+#include <headers/hw_memmap.h>
+#include <headers/hw_ssi.h>
+#include <headers/hw_sys_ctrl.h>
+#include <headers/hw_types.h>
+
+#include <source/flash.h>
+#include <source/interrupt.h>
+#include <source/ioc.h>
+#include <source/gpio.h>
+#include <source/gptimer.h>
+#include <source/sys_ctrl.h>
+#include <source/sleepmode.h>
+#include <headers/hw_ints.h>
+
+#include "board.h"
+#include "leds.h"
+
 //=========================== variables =======================================
 
 ieee154e_vars_t    ieee154e_vars;
 ieee154e_stats_t   ieee154e_stats;
 ieee154e_dbg_t     ieee154e_dbg;
+int serialrx_flag = 0;
 
 //=========================== prototypes ======================================
 
@@ -296,6 +320,10 @@ void isr_ieee154e_newSlot(opentimers_id_t id) {
         // adaptive synchronization
         adaptive_sync_countCompensationTimeout();
 #endif
+        //since I'm syncrhonized, turn all lights on;
+        GPIOPinWrite(GPIO_C_BASE, GPIO_PIN_4, GPIO_PIN_4);
+        GPIOPinWrite(GPIO_C_BASE, GPIO_PIN_7, GPIO_PIN_7);
+
         activity_ti1ORri1();
     }
     ieee154e_dbg.num_newSlot++;
@@ -805,6 +833,8 @@ port_INLINE void activity_ti1ORri1() {
    bool        changeToRX=FALSE;
    bool        couldSendEB=FALSE;
 
+   serialrx_flag = 0;
+
    // increment ASN (do this first so debug pins are in sync)
    incrementAsnOffset();
    
@@ -1060,6 +1090,9 @@ port_INLINE void activity_ti1ORri1() {
          );
          ieee154e_vars.slotDuration = TsSlotDuration*(ieee154e_vars.numOfSleepSlots);
          // radiotimer_setPeriod(TsSlotDuration*(ieee154e_vars.numOfSleepSlots));
+         if (idmanager_getIsDAGroot()==FALSE) {
+              serialrx_flag = 1;
+            }
          
 #ifdef ADAPTIVE_SYNC
          // deal with the case when schedule multi slots
@@ -2648,6 +2681,11 @@ void synchronizeAck(PORT_SIGNED_INT_WIDTH timeCorrection) {
    debugpins_syncAck_set();
    debugpins_syncAck_clr();
 #endif
+}
+
+
+int isSlotSerialRx(void) {
+    return serialrx_flag;
 }
 
 void changeIsSync(bool newIsSync) {
