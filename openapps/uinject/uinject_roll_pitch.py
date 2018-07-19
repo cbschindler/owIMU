@@ -2,7 +2,7 @@ import socket
 import struct
 
 import datetime, keyboard, argparse
-from math import sin,cos,tan,radians,atan,sqrt
+from math import sin,cos,tan,radians,atan,sqrt,degrees,radians
 from visualization import *
 
 parser = argparse.ArgumentParser()
@@ -46,36 +46,49 @@ while run:
         ASN = struct.unpack('<HHB',message[0:5])
         addr = format(struct.unpack('<H',message[5:7])[0], 'x')
 
-        accelX  = struct.unpack('<h',message[7:9])
-        accelY  = struct.unpack('<h',message[9:11])
-        accelZ  = struct.unpack('<h',message[11:13])
-        gyro0 = struct.unpack('<h',message[13:15])
-        gyro1 = struct.unpack('<h',message[15:17])
-        gyro2 = struct.unpack('<h',message[17:19])
-        roll = struct.unpack('<f',message[19:23])
-        pitch = struct.unpack('<f',message[23:27])
-        yaw = struct.unpack('<f',message[27:31])
-
+        accelX  = struct.unpack('<h',message[7:9])[0]
+        accelY  = struct.unpack('<h',message[9:11])[0]
+        accelZ  = struct.unpack('<h',message[11:13])[0]
+        gyro0 = struct.unpack('<h',message[13:15])[0]
+        gyro1 = struct.unpack('<h',message[15:17])[0]
+        gyro2 = struct.unpack('<h',message[17:19])[0]
+        roll = degrees(struct.unpack('<f',message[19:23])[0])
+        pitch = degrees(struct.unpack('<f',message[23:27])[0])
+        yaw = degrees(struct.unpack('<f',message[27:31])[0])
+        
+        '''print "time [s]: " + str()
+            print "address: " + str(addr)
+            print "accelX: " + str(accelX)
+            print "accelY: " + str(accelY)
+            print "accelZ: " + str(accelZ)
+            print "pitch: " + str(degrees(pitch))
+            print "roll: " + str(degrees(roll))
+            print "yaw: " + str(degrees(yaw))
+            print "\n"'''
+        
         if reset_flag and not reset_buf.contains(addr):
             init_angles[addr] = (roll, pitch)
             reset_buf.append(addr)
             if len(reset_buf) == len(network): # have we updated every mimsy
                 reset_flag = False
                 reset_buf = []
+                
 
         network.update(data=(roll-init_angles[addr][0], pitch-init_angles[addr][1]), addr=formattedAddr)
 
         data_x = 'g_x: ' + str(accelX)
         data_y = 'g_y: ' + str(accelY)
         data_z = 'g_z: ' + str(accelZ)
-        data_r = 'roll: ' + roll
-        data_p = 'pitch: ' + pitch
-        data_y = 'yaw: ' + yaw
-        data_addr = 'addr: ' + addr
-        data_asn = 'ASN: ' + str(ASN)
+        data_r = 'roll: ' + str(roll)
+        data_p = 'pitch: ' + str(pitch)
+        data_y = 'yaw: ' + str(yaw)
+        data_addr = 'addr: ' + str(addr)
+        data_asn = 'time[s]: ' + str(0.01*(ASN[0] + ASN[1]*(2**16) + ASN[2]*(2**16)))
 
-        data = data_x + ', ' + data_y + ', ' + data_z + ', ' + data_r + ', ' + \
-                data_r + ', ' + data_p + ', ' + data_y + ', ' + data_addr + ', ' + \
+        sep = ", "
+
+        data = data_x + sep + data_y + sep + data_z + sep + data_r + sep + \
+                data_r + sep + data_p + sep + data_y + sep + data_addr + sep + \
                 data_asn
 
         if args.verbose:
