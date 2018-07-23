@@ -1,7 +1,7 @@
 import socket
 import struct
 
-import datetime, keyboard, argparse
+import datetime, keyboard, argparse, traceback
 from math import sin,cos,tan,radians,atan,sqrt,degrees,radians
 from visualization import *
 
@@ -14,9 +14,10 @@ args = parser.parse_args()
 socket_handler = socket.socket(socket.AF_INET6,socket.SOCK_DGRAM)
 socket_handler.bind(('',2018))
 
-now = datetime.datetime.now()
-filename = str(now.year)+"-"+str(now.month)+"-"+str(now.day)+"-"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)+".csv"
-file = open(filename,"w")
+if args.log:
+    now = datetime.datetime.now()
+    filename = str(now.year)+"-"+str(now.month)+"-"+str(now.day)+"-"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)+".csv"
+    file = open(filename,"w")
 
 init_angles, reset_flag, reset_buf, run = {}, True, [], True
 
@@ -31,7 +32,7 @@ def brk(event):
     global run
     run = False
 
-network = Network.initialize('setup.txt', args.testing)
+network = Network.initialize('setup.txt', False)
 keyboard.hook_key('r', lambda event: reset(event), suppress=False)
 keyboard.hook_key('q', lambda event: brk(event), suppress=False)
 
@@ -66,7 +67,7 @@ while run:
             print "yaw: " + str(degrees(yaw))
             print "\n"'''
         
-        if reset_flag and not reset_buf.contains(addr):
+        if reset_flag and addr not in reset_buf:
             init_angles[addr] = (roll, pitch)
             reset_buf.append(addr)
             if len(reset_buf) == len(network): # have we updated every mimsy
@@ -74,7 +75,7 @@ while run:
                 reset_buf = []
                 
 
-        network.update(data=(roll-init_angles[addr][0], pitch-init_angles[addr][1]), addr=formattedAddr)
+        network.update(data=(roll-init_angles[addr][0], pitch-init_angles[addr][1]), addr=addr)
 
         data_x = 'g_x: ' + str(accelX)
         data_y = 'g_y: ' + str(accelY)
@@ -95,5 +96,7 @@ while run:
             print(data)
         if args.log:
             file.write(data + '\n')
-    except:
+    except Exception, err:
         print('Receive failed.')
+        print('Printing traceback...')
+        traceback.print_exc()
