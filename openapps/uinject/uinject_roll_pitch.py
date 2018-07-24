@@ -4,6 +4,7 @@ import struct
 import datetime, keyboard, argparse, traceback
 from math import sin,cos,tan,radians,atan,sqrt,degrees,radians
 from visualization import *
+from time import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-l", "--log", action='store_true', help='a logging flag')
@@ -19,7 +20,10 @@ if args.log:
     filename = str(now.year)+"-"+str(now.month)+"-"+str(now.day)+"-"+str(now.hour)+"-"+str(now.minute)+"-"+str(now.second)+".csv"
     file = open(filename,"w")
 
-init_angles, reset_flag, reset_buf, run = {}, True, [], True
+init_angles, reset_flag, reset_buf, run, show_raw  = {}, True, [], True, True
+time_mappings = {}
+
+network = Network.initialize('setup.txt', False)
 
 def reset(event):
     global reset_flag
@@ -32,14 +36,42 @@ def brk(event):
     global run
     run = False
 
-network = Network.initialize('setup.txt', False)
-keyboard.hook_key('r', lambda event: reset(event), suppress=False)
-keyboard.hook_key('q', lambda event: brk(event), suppress=False)
+def toggleRaw(event):
+    global show_raw
+    if event.event_type == 'down':
+        show_raw = not show_raw
 
+def consoleUpdate(event):
+    global time_mappings
+    global show_raw
+    global reset_flag
+    global reset_buf
+    now = time()
+    if event.event_type == 'down':
+        for mimsy in time_mappings.keys():
+            print(mimsy + ": " + str(now - time_mappings.get(mimsy)) + " seconds since last update")
+        if show_raw:
+            print("Showing raw angle data.")
+        else:
+            print("Showing relative angle data.")
+            for mimsy in init_angles.keys():
+                print("Offset Angles for " + mimsy + ": roll=" + str(init_angles[mimsy][0]) + " | pitch=" + str(init_angles[mimsy][1]))  
+        if reset_flag:
+            print("Reset Buffer (size=" + str(len(reset_buf)) + "missing=" + str(len(network)-len(reset_buf)) +  "): " + str(reset_buf))
+        else:
+            print("Reset flag not set.")
+
+keyboard.hook_key('r', lambda event: reset(event), suppress=False)
+keyboard.hook_key('n', lambda event: toggleRaw(event), suppress=False)
+keyboard.hook_key('q', lambda event: brk(event), suppress=False)
+keyboard.hook_key('u', lambda event: consoleUpdate(event), suppress=False)
+run = False
 while run:
     try:
         # wait for a request
         message, dist_addr = socket_handler.recvfrom(1024)
+
+        timestamp = time()
 
         hisAddress     = dist_addr[0]
         hisPort        = dist_addr[1]
@@ -74,12 +106,16 @@ while run:
                 reset_flag = False
                 reset_buf = []
                 
+        if not show_raw:
+            network.update(data=(roll-init_angles[addr][0], pitch-init_angles[addr][1]), addr=addr)
+        else:
+            network.update(data=(roll, pitch), addr=addr)
 
-        network.update(data=(roll-init_angles[addr][0], pitch-init_angles[addr][1]), addr=addr)
+        time_mappings[addr] = timestamp
 
-        data_x = 'g_x: ' + str(accelX)
-        data_y = 'g_y: ' + str(accelY)
-        data_z = 'g_z: ' + str(accelZ)
+        data_ax = 'g_x: ' + str(accelX)
+        data_ay = 'g_y: ' + str(accelY)
+        data_az = 'g_z: ' + str(accelZ)
         data_r = 'roll: ' + str(roll)
         data_p = 'pitch: ' + str(pitch)
         data_y = 'yaw: ' + str(yaw)
@@ -88,9 +124,8 @@ while run:
 
         sep = ", "
 
-        data = data_x + sep + data_y + sep + data_z + sep + data_r + sep + \
-                data_r + sep + data_p + sep + data_y + sep + data_addr + sep + \
-                data_asn
+        data = data_ax + sep + data_ay + sep + data_az + sep + data_r + sep + \
+                data_p + sep + data_y + sep + data_addr + sep + data_asn
 
         if args.verbose:
             print(data)
@@ -100,3 +135,5 @@ while run:
         print('Receive failed.')
         print('Printing traceback...')
         traceback.print_exc()
+
+exit()
