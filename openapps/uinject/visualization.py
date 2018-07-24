@@ -97,9 +97,6 @@ class Network:
         self.inputs = np.array([(0, 0) for k in range(w*h)])
         self.initGUI()
 
-        print(self.mapping)
-        print(len(self.vecs))
-
         Network._id += 1
 
     def __len__(self):
@@ -226,8 +223,9 @@ class Network:
         set = False
 
         mapping = bidict({})
-        print(list(reversed(content)))
+        print(filename + ": ")
         for i, line in enumerate(list(reversed(content))):
+            print(line)
             addrs = line.replace(" ", "").replace("\n", "").split(',')
             if not set:
                 w = len(addrs)
@@ -241,4 +239,5 @@ class Network:
                     raise RuntimeError('Setup file badly formatted: ' + \
                         'Mimsy board ID at position (' + \
                          str(j) + ', ' + str(i) + ') does not pass regex test.')
+        print("Initializing a " + str(w) + "x" + str(h) + " mesh network of size " + str(w*h) + ", parsed from " + str(filename) + ".")
         return cls(w, h, mapping, testing)

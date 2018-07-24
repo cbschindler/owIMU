@@ -48,24 +48,26 @@ def consoleUpdate(event):
     global reset_buf
     now = time()
     if event.event_type == 'down':
+        print("")
         for mimsy in time_mappings.keys():
             print(mimsy + ": " + str(now - time_mappings.get(mimsy)) + " seconds since last update")
         if show_raw:
-            print("Showing raw angle data.")
+            print("Showing NATIVE angle data.")
         else:
-            print("Showing relative angle data.")
+            print("Showing RELATIVE angle data.")
             for mimsy in init_angles.keys():
                 print("Offset Angles for " + mimsy + ": roll=" + str(init_angles[mimsy][0]) + " | pitch=" + str(init_angles[mimsy][1]))  
         if reset_flag:
-            print("Reset Buffer (size=" + str(len(reset_buf)) + "missing=" + str(len(network)-len(reset_buf)) +  "): " + str(reset_buf))
+            print("Reset Buffer (size=" + str(len(reset_buf)) + ", missing=" + str(len(network)-len(reset_buf)) +  "): " + str(reset_buf))
         else:
             print("Reset flag not set.")
+        print("")
 
 keyboard.hook_key('r', lambda event: reset(event), suppress=False)
 keyboard.hook_key('n', lambda event: toggleRaw(event), suppress=False)
 keyboard.hook_key('q', lambda event: brk(event), suppress=False)
 keyboard.hook_key('u', lambda event: consoleUpdate(event), suppress=False)
-run = False
+
 while run:
     try:
         # wait for a request
@@ -121,11 +123,14 @@ while run:
         data_y = 'yaw: ' + str(yaw)
         data_addr = 'addr: ' + str(addr)
         data_asn = 'time[s]: ' + str(0.01*(ASN[0] + ASN[1]*(2**16) + ASN[2]*(2**16)))
+        data_roff = 'roll_offset: ' + str(init_angles[addr][0])
+        data_poff = 'pitch_offset: ' + str(init_angles[addr][1])
 
         sep = ", "
 
         data = data_ax + sep + data_ay + sep + data_az + sep + data_r + sep + \
-                data_p + sep + data_y + sep + data_addr + sep + data_asn
+                data_p + sep + data_y + sep + data_addr + sep + data_asn + sep + \
+                data_roff + sep + data_poff
 
         if args.verbose:
             print(data)
@@ -135,5 +140,3 @@ while run:
         print('Receive failed.')
         print('Printing traceback...')
         traceback.print_exc()
-
-exit()
