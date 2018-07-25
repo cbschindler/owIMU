@@ -116,6 +116,17 @@ void uinject_timer_cb(opentimers_id_t id){
 }
 
 void uinject_task_cb() {
+
+    i2c_init();
+    //mimsyIMUInit();
+
+    //mpu_set_sensors(INV_XYZ_GYRO|INV_XYZ_ACCEL); // turn on sensors
+    //mpu_set_accel_fsr(16); // set fsr for accel
+    //mpu_set_gyro_fsr(2000); // set fsr for gyro
+
+    //mimsyDmpBegin();
+
+
     OpenQueueEntry_t*    pkt;
     uint8_t              asnArray[5];
 
