@@ -94,6 +94,11 @@ void board_sleep(void) {
     SysCtrlSleep();
 }
 
+void board_deep_sleep(void) {
+  SysCtrlPowerModeSet(SYS_CTRL_PM_2);
+  SysCtrlDeepSleep();
+}
+
 /**
  * Timer runs at 32 MHz and is 32-bit wide
  * The timer is divided by 32, whichs gives a 1 microsecond ticks
