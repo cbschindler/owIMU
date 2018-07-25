@@ -60,14 +60,14 @@ void scheduler_start() {
       }
       debugpins_task_clr();
       
-      /*
+      
       if (isSlotSerialRx() == 1) {
          board_deep_sleep();
       } else {
           board_sleep();
       }
-      */
-      board_sleep();
+      
+      //board_sleep();
       
       debugpins_task_set();                      // IAR should halt here if nothing to do
    }
