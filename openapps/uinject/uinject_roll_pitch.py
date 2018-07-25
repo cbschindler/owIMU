@@ -115,6 +115,10 @@ while run:
 
         time_mappings[addr] = timestamp
 
+        for mimsyAddr in time_mappings.keys():
+            if timestamp - time_mappings[mimsyAddr] >= 60:
+                network.setMimsyColor(network.mapping.get(mimsyAddr), r=1)
+
         data_ax = 'g_x: ' + str(accelX)
         data_ay = 'g_y: ' + str(accelY)
         data_az = 'g_z: ' + str(accelZ)
