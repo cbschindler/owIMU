@@ -20,13 +20,13 @@ The superframe reappears over time and can be arbitrarily long.
 #define SLOTFRAME_LENGTH    23 //should be 101
 
 //draft-ietf-6tisch-minimal-06
-#define SCHEDULE_MINIMAL_6TISCH_ACTIVE_CELLS                      5
+#define SCHEDULE_MINIMAL_6TISCH_ACTIVE_CELLS                      10
 #define SCHEDULE_MINIMAL_6TISCH_SLOTOFFSET                        0
 #define SCHEDULE_MINIMAL_6TISCH_CHANNELOFFSET                     0
 #define SCHEDULE_MINIMAL_6TISCH_DEFAULT_SLOTFRAME_HANDLE          0 //id of slotframe
 #define SCHEDULE_MINIMAL_6TISCH_DEFAULT_SLOTFRAME_NUMBER          1 //1 slotframe by default.
 
-#define NUMSERIALRX          16
+#define NUMSERIALRX          11
 
 /*
   NUMSLOTSOFF is the max number of cells that the mote can add into schedule, 
