@@ -9,7 +9,7 @@
 #include "board.h"
 #include "debugpins.h"
 #include "leds.h"
-#include "/home/vagrant/openwsn-May19/openwsn-fw/openstack/02b-MAChigh/schedule.h"
+#include "/home/vagrant/openwsn-test/openwsn-fw/openstack/02b-MAChigh/schedule.h"
 
 //=========================== variables =======================================
 
