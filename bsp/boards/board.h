@@ -31,6 +31,7 @@ typedef enum {
 #define SWEEP_PERIOD_US 8333.333333f
 
 #define CLOCK_SPEED_MHZ 32.0f
+#define MAX_SAMPLES 200
 
 //=========================== typedef =========================================
 

@@ -76,6 +76,7 @@ float pitch_calib = -1;
 
 static const float sweep_velocity = PI / SWEEP_PERIOD_US;
 
+volatile float valid_angles[MAX_SAMPLES][2];
 volatile pulse_t pulses[PULSE_TRACK_COUNT];
 volatile uint8_t modular_ptr;
 volatile uint8_t pulse_count;
@@ -522,12 +523,14 @@ static void mattress_init(void) {
 
             // recover azimuth and elevation
             location_t loc = localize_mimsy(pulses_local);
-            if (!loc.valid) { continue; }
+            if (!loc.valid) { test_count += 1; continue; }
+
+            valid_angles[(int)samples][0] = loc.phi; valid_angles[(int)samples][1] = loc.theta;
 
             samples += 1;
             horiz_t += loc.phi; vert_t += loc.theta; // TODO: IMU data
 
-            if (samples >= 1) {
+            if (samples >= MAX_SAMPLES) {
                 break;
             }
         }
@@ -536,8 +539,6 @@ static void mattress_init(void) {
         // after k samples, take average time difference, break
 
         // get it to work, then make it perfect
-
-        test_count += 1;
     }
 
     azimuth = horiz_t / samples; elevation = vert_t / samples; // TODO: IMU data
