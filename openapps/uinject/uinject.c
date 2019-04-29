@@ -13,9 +13,7 @@
 #include "ml_math_func.h"
 #include <math.h>
 
-
-
-
+#include "board.h"
 #include "i2c.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -49,6 +47,11 @@ static const uint8_t uinject_dst_addr[]   = {
    0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
 };
+
+float azi;
+float ele;
+float roll_c;
+float pitch_c;
 
 //=========================== prototypes ======================================
 
@@ -86,6 +89,11 @@ void uinject_init() {
         TIMER_PERIODIC,
         uinject_timer_cb
     );
+
+    azi = azimuth;
+    ele = elevation;
+    roll_c = roll_calib;
+    pitch_c = pitch_calib;
 }
 
 void uinject_sendDone(OpenQueueEntry_t* msg, owerror_t error) {
