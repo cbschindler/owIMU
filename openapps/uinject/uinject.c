@@ -6,10 +6,6 @@
 #include "scheduler.h"
 #include "IEEE802154E.h"
 #include "idmanager.h"
-#include "accel_mimsy.h"
-#include "flash_mimsy.h"
-#include "inv_mpu.h"
-#include "inv_mpu_dmp_motion_driver.h"
 #include "ml_math_func.h"
 #include <math.h>
 
@@ -59,14 +55,6 @@ void quat2euler(long * quat, float * yaw, float * pitch, float * roll);
 //=========================== public ==========================================
 
 void uinject_init() {
-  	mimsyIMUInit();
-
-    mpu_set_sensors(INV_XYZ_GYRO|INV_XYZ_ACCEL); // turn on sensors
-    mpu_set_accel_fsr(16); // set fsr for accel
-    mpu_set_gyro_fsr(2000); // set fsr for gyro
-
-    mimsyDmpBegin();
-
     // clear local variables
     memset(&uinject_vars,0,sizeof(uinject_vars_t));
 
@@ -116,17 +104,6 @@ void uinject_timer_cb(opentimers_id_t id){
 }
 
 void uinject_task_cb() {
-
-    i2c_init();
-    //mimsyIMUInit();
-
-    //mpu_set_sensors(INV_XYZ_GYRO|INV_XYZ_ACCEL); // turn on sensors
-    //mpu_set_accel_fsr(16); // set fsr for accel
-    //mpu_set_gyro_fsr(2000); // set fsr for gyro
-
-    //mimsyDmpBegin();
-
-
     OpenQueueEntry_t*    pkt;
     uint8_t              asnArray[5];
 
@@ -138,33 +115,6 @@ void uinject_task_cb() {
       opentimers_destroy(uinject_vars.timerId);
       return;
     }
-
-    // read imu fifo
-    short gyro[3] = {0,0,0};
-    short accel[3] = {0,0,0};
-    long quat[4] = {0,0,0,0};
-    short sensors = INV_XYZ_GYRO | INV_WXYZ_QUAT | INV_XYZ_ACCEL;
-    short more;
-    unsigned long timestamp;
-
-    while(dmp_read_fifo(gyro, accel, quat, &timestamp, &sensors, &more) != 0) {}
-
-    union {
-      float flt;
-      unsigned char bytes[4];
-    } yaw;
-
-    union {
-      float flt;
-      unsigned char bytes[4];
-    } pitch;
-
-    union {
-      float flt;
-      unsigned char bytes[4];
-    } roll;
-
-    quat2euler(quat, &(yaw.flt), &(pitch.flt), &(roll.flt));
 
     // if you get here, send a packet
 
@@ -192,35 +142,64 @@ void uinject_task_cb() {
     packetfunctions_reserveHeaderSize(pkt,sizeof(uinject_payload)-1);
     memcpy(&pkt->payload[0],uinject_payload,sizeof(uinject_payload)-1);
 
- 
+    GPIOPinTypeGPIOInput(GPIO_D_BASE, GPIO_PIN_4);
+    GPIOPinTypeGPIOInput(GPIO_D_BASE, GPIO_PIN_5);
+    uint16_t ui16Dummy;
+    double dOutputVoltage;
 
-    // add payload
-  	packetfunctions_reserveHeaderSize(pkt,6*sizeof(uint16_t)+3*sizeof(float));
-  	pkt->payload[1] = (uint8_t)((accel[0] & 0xff00)>>8);
-  	pkt->payload[0] = (uint8_t)(accel[0] & 0x00ff);
-  	pkt->payload[3] = (uint8_t)((accel[1] & 0xff00)>>8);
-  	pkt->payload[2] = (uint8_t)(accel[1] & 0x00ff);
-  	pkt->payload[5] = (uint8_t)((accel[2] & 0xff00)>>8);
-  	pkt->payload[4] = (uint8_t)(accel[2] & 0x00ff);
-  	pkt->payload[7] = (uint8_t)((gyro[0] & 0xff00)>>8);
-  	pkt->payload[6] = (uint8_t)(gyro[0] & 0x00ff);
-  	pkt->payload[9] = (uint8_t)((gyro[1] & 0xff00)>>8);
-  	pkt->payload[8] = (uint8_t)(gyro[1] & 0x00ff);
-  	pkt->payload[11] = (uint8_t)((gyro[2] & 0xff00)>>8);
-    pkt->payload[10] = (uint8_t)(gyro[2] & 0x00ff);
-  	//*************** euler angles ****************************
-  	pkt->payload[15] = roll.bytes[3];
-  	pkt->payload[14] = roll.bytes[2];
-  	pkt->payload[13] = roll.bytes[1];
-  	pkt->payload[12] = roll.bytes[0];
-  	pkt->payload[19] = pitch.bytes[3];
-  	pkt->payload[18] = pitch.bytes[2];
-  	pkt->payload[17] = pitch.bytes[1];
-  	pkt->payload[16] = pitch.bytes[0];
-  	pkt->payload[23] = yaw.bytes[3];
-  	pkt->payload[22] = yaw.bytes[2];
-  	pkt->payload[21] = yaw.bytes[1];
-  	pkt->payload[20] = yaw.bytes[0];
+    //
+    // Connect temp sensor to ADC
+    //
+    HWREG(CCTEST_TR0) |= CCTEST_TR0_ADCTM;
+
+    //
+    // Enable the temperature sensor
+    //
+    HWREG(RFCORE_XREG_ATEST) = 0x01;
+
+    //
+    // Configure ADC, Internal reference, 512 decimation rate (12bit)
+    //
+    SOCADCSingleConfigure(SOCADC_12_BIT, SOCADC_REF_INTERNAL);
+
+
+
+    //
+    // Trigger single conversion on internal temp sensor
+    //
+    SOCADCSingleStart(SOCADC_TEMP_SENS);
+
+    //
+    // Wait until conversion is completed
+    //
+    while(!SOCADCEndOfCOnversionGet())
+           {
+           }
+
+    //
+    // Get data and shift down based on decimation rate
+    //
+    ui16Dummy = SOCADCDataGet() >> SOCADC_12_BIT_RSHIFT;
+
+    //
+    // Convert to temperature
+    //
+    dOutputVoltage = ui16Dummy * CONST;
+    dOutputVoltage = ((dOutputVoltage - OFFSET_0C) / TEMP_COEFF);
+
+    //
+    // Disable the temperature sensor
+    //
+    HWREG(RFCORE_XREG_ATEST) = 0x00;
+
+    //
+    // Disconnect temp sensor to ADC
+    //
+    HWREG(CCTEST_TR0) = 0x0;
+
+    packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
+    pkt->payload[1] = (uint8_t)(((int)dOutputVoltage & 0xff00)>>8);
+    pkt->payload[0] = (uint8_t)((int)dOutputVoltage & 0x00ff);
 
     packetfunctions_reserveHeaderSize(pkt,sizeof(uint16_t));
     pkt->payload[1] = (uint8_t)(idmanager_getMyID(ADDR_64B)->addr_64b[6]);
@@ -239,90 +218,4 @@ void uinject_task_cb() {
     if ((openudp_send(pkt))==E_FAIL) {
       openqueue_freePacketBuffer(pkt);
     }
-}
-
-float mysqrt(float square)
-{
-    float root=square/3;
-    int i;
-    if (square <= 0) return 0;
-    for (i=0; i<32; i++)
-        root = (root + square / root) / 2;
-    return root;
-}
-
-float mypow (float num, int pow) {
-	int i;
-	float result = 1;
-	for (i = pow; i > 0; i--) {
-		result *= num;
-	}
-	return result;
-}
-
-void quat2euler(long * quat, float * yaw, float * pitch, float * roll) {
-   float fquats[4];
-   //conversion to float
-   fquats[0]=(float)quat[0]/(float)0x40000000;
-   fquats[1]=(float)quat[1]/(float)0x40000000;
-   fquats[2]=(float)quat[2]/(float)0x40000000;
-   fquats[3]=(float)quat[3]/(float)0x40000000;
-   
-   //inv_q_norm4(fquats);
-   float mag;
-    mag = mysqrt(fquats[0] * fquats[0] + fquats[1] * fquats[1] + fquats[2] * fquats[2] + fquats[3] * fquats[3]);
-    if (mag) {
-        fquats[0] /= mag;
-        fquats[1] /= mag;
-        fquats[2] /= mag;
-        fquats[3] /= mag;
-    } else {
-        fquats[0] = 1.f;
-        fquats[1] = 0.f;
-        fquats[2] = 0.f;
-        fquats[3] = 0.f;
-    }
-
-   float myarg1;
-   float myarg2;
-   myarg1 = 2 * (fquats[0] * fquats[2] - fquats[3] * fquats[1]);
-   *pitch = myarg1 + (mypow(myarg1,3) / 6) + (3 * mypow(myarg1,5) / 40.0) + (5*mypow(myarg1,7) / 112.0) + (35*mypow(myarg1,9) / 1152);
-
-   myarg1 =  2 * (fquats[0] * fquats[3] + fquats[1] * fquats[2]);
-   myarg2 = 1 - 2 * (fquats[2]*fquats[2] + fquats[3] * fquats[3]);
-   myarg1 = myarg1/myarg2;
-   if (myarg1 <= 1 && myarg1 >= -1) {
-   *yaw = myarg1 - mypow(myarg1,3)/3.0 + mypow(myarg1,5)/5.0 - mypow(myarg1,7)/7.0 + mypow(myarg1,9)/9.0;
-	}
-	else if (myarg1 > 1) {
-		myarg1 = 1.0/myarg1;
-		*yaw = 1.570796326794897 - (myarg1 - mypow(myarg1,3)/3.0 + mypow(myarg1,5)/5.0 - mypow(myarg1,7)/7.0 + mypow(myarg1,9)/9.0);
-	}
-	else {
-		myarg1 = -1.0/myarg1;
-		*yaw = -1.0*(1.570796326794897 - (myarg1 - mypow(myarg1,3)/3.0 + mypow(myarg1,5)/5.0 - mypow(myarg1,7)/7.0 + mypow(myarg1,9)/9.0));
-	}
-
-
-   myarg1 =  2 * (fquats[0] * fquats[1] + fquats[2] * fquats[3]);
-   myarg2 = 1 - 2 * (fquats[1] * fquats[1] + fquats[2] * fquats[2]);
-   myarg1 = myarg1/myarg2;
-	if (myarg1 <= 1 && myarg1 >= -1) {
-   *roll = myarg1 - mypow(myarg1,3)/3.0 + mypow(myarg1,5)/5.0 - mypow(myarg1,7)/7.0 + mypow(myarg1,9)/9.0;
-	}
-   else if (myarg1 > 1) {
-   	myarg1 = 1.0/myarg1;
-   	*roll = 1.570796326794897 - (myarg1 - mypow(myarg1,3)/3.0 + mypow(myarg1,5)/5.0 - mypow(myarg1,7)/7.0 + mypow(myarg1,9)/9.0);
-   }
-   else {
-   	myarg1 = -1.0/myarg1;
-   	*roll = -1.0*(1.570796326794897 - (myarg1 - mypow(myarg1,3)/3.0 + mypow(myarg1,5)/5.0 - mypow(myarg1,7)/7.0 + mypow(myarg1,9)/9.0));
-   }
-
-   //*pitch = asinf(2 * (fquats[0] * fquats[2] - fquats[3] * fquats[1])); //computes sin of pitch
-   //gyro yaw
-   //*yaw = atan2f(2 * (fquats[0] * fquats[3] + fquats[1] * fquats[2]), 1 - 2 * (fquats[2]*fquats[2] + fquats[3] * fquats[3]));
-   //roll control
-   //*roll= atan2f(2 * (fquats[0] * fquats[1] + fquats[2] * fquats[3]), 1 - 2 * (fquats[1] * fquats[1] + fquats[2] * fquats[2]));
-   
 }
