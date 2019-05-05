@@ -582,3 +582,80 @@ void mimsy_GPIO_falling_edge_handler(void) {
 
     pulse_count += 1;
 }
+
+//=============================== flash ==========================================
+
+/*This function writes a full 2048 KB page-worth of data to flash.
+  Parameters:
+    CalibData data[]: pointer to array of CalibData structures that are to be written to flash
+    uint32_t size: size of data[] in number of CalibData structures
+    uint32_t startPage: Flash page where data is to be written
+    CalibDataCard *card: pointer to an CalibDataCard where the function will record
+      which page the data was written to and which timestamps on the data are included
+ */
+void flashWriteCalib(CalibData data[],uint32_t size, uint32_t startPage,int wordsWritten){
+  uint32_t pageStartAddr = FLASH_BASE + (startPage * PAGE_SIZE); // page base address
+  int32_t i32Res;
+
+  uint32_t structNum = size;
+
+  // mimsyPrintf("\n Flash Page Address: %x",pageStartAddr);
+  if (wordsWritten == 0){
+	  i32Res = FlashMainPageErase(pageStartAddr); // erase page so there it can be written to
+  }
+
+  // mimsyPrintf("\n Flash Erase Status: %d",i32Res);
+  for (uint32_t i = 0; i < size; i++){
+    uint32_t* wordified_data=data[i].bits; //retrieves the int32 array representation of the PulseData struct
+    IntMasterDisable(); //disables interrupts to prevent the write operation from being messed up
+    i32Res = FlashMainPageProgram(wordified_data, pageStartAddr+i*CALIB_DATA_STRUCT_SIZE+wordsWritten*4, CALIB_DATA_STRUCT_SIZE); //write struct to flash
+    IntMasterEnable();//renables interrupts
+    // mimsyPrintf("\n Flash Write Status: %d",i32Res);
+   }
+
+   // update card with location information
+   // card->page=startPage;
+   // card->startTime=data[0].fields.timestamp;
+   // card->endTime=data[size-1].fields.timestamp;
+
+}
+
+/*This function reads a page worth of CalibData from flash.
+  Parameters:
+    CalibDataCard card: The CalibDataCard that corresponds to the data that you want to read from flash
+    CalibData * dataArray: pointer that points to location of data array that you want the read operation to be written to
+    uint32_t size: size of dataArray in number of CalibData structures
+*/
+void flashReadCalib(CalibDataCard card, CalibData * dataArray, uint32_t size){
+
+  uint32_t pageAddr=FLASH_BASE+card.page*PAGE_SIZE;
+
+  for(uint32_t i=0;i<size;i++){
+    for(uint32_t j=0;j<CALIB_DATA_STRUCT_SIZE/4;j++){
+      IntMasterDisable();
+      dataArray[i].bits[j] = FlashGet(pageAddr+i*CALIB_DATA_STRUCT_SIZE+j*4);
+      IntMasterEnable();
+    }
+  }
+
+}
+
+/*This function reads a page worth of CalibData from flash.
+  Parameters:
+    CalibDataCard card: The CalibDataCard that corresponds to the data that you want to read from flash
+    CalibData * dataArray: pointer that points to location of data array that you want the read operation to be written to
+    uint32_t size: size of dataArray in number of CalibData structures
+*/
+void flashReadCalibSection(CalibDataCard card, CalibData * dataArray, uint32_t size, int wordsRead){
+
+  uint32_t pageAddr=FLASH_BASE+card.page*PAGE_SIZE;
+
+  for(uint32_t i=0;i<size;i++){
+    for(uint32_t j=0;j<PULSE_DATA_STRUCT_SIZE/4;j++){
+       IntMasterDisable();
+       dataArray[i].bits[j]=FlashGet(pageAddr+i*CALIB_DATA_STRUCT_SIZE+j*4+wordsRead*4);
+       IntMasterEnable();
+    }
+  }
+
+}
